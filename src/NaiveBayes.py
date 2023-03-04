@@ -1,46 +1,45 @@
+from __future__ import annotations
 from copy import copy, deepcopy
-from zope.interface import implementer
-from AI_Algorithm import AIAlgorithmInterface
+from abc import ABC, abstractmethod
+from src.AI_Algorithm import AIAlgorithmInterface
 from src.Logger import MyLogger
+from copy import copy, deepcopy
 
 
-@implementer(AIAlgorithmInterface)
-class NaiveBayes:
-    def __init__(self, data):
-        self.logger = MyLogger().getLogger()
+
+class NaiveBayes(AIAlgorithmInterface):
+    def __init__(self, trainingDataSet, allDataSet=None):
         self.outputMap = {}
         self.attributesMap = {}
         # Split Input and output
-        self.output_Array = []
-        self.input_Array = []
-        for row in data:
-            vector = deepcopy(row)
-            self.output_Array.append(vector.pop())
-            self.input_Array.append(vector)
+        self.TrainingData_Output_Arr = []
+        self.TrainingData_Input_Arr = []
 
-    def readColumn(self, data, index):
+        for row in trainingDataSet:
+            vector = deepcopy(row)
+            self.TrainingData_Output_Arr.append(vector.pop())
+            self.TrainingData_Input_Arr.append(vector)
+        # self.train()
+
+    def _readColumn(self, data, index):
         s = []
         for row in data:
             s.append(row[index])
         return s
 
     def train(self):
-        # Validation
-        if len(self.output_Array) != len(self.input_Array):
-            self.logger.debug("Wrong Params , Check Prams")
-            raise Exception("Wrong Params , Check Prams")
-        # Discover output
-        s = list(set(self.output_Array))
+
+        s = list(set(self.TrainingData_Output_Arr))
         # Count the output
-        for category in self.output_Array:
+        for category in self.TrainingData_Output_Arr:
             self.outputMap[category] = {"Count": self.outputMap.get(category, {"Count": 0}).get("Count") + 1}
         for category in self.outputMap:
-            self.outputMap[category]["Probability"] = self.outputMap[category]["Count"] / len(self.output_Array)
+            self.outputMap[category]["Probability"] = self.outputMap[category]["Count"] / len(self.TrainingData_Output_Arr)
         # Define Json for attributes
         #  Init Stage
-        Number_Of_Columns = len(self.input_Array[0])
+        Number_Of_Columns = len(self.TrainingData_Input_Arr[0])
         for column in range(Number_Of_Columns):
-            categories = set(self.readColumn(self.input_Array, column))
+            categories = set(self._readColumn(self.TrainingData_Input_Arr, column))
             self.attributesMap["COLUMN" + str(column)] = {}
             for value in categories:
                 self.attributesMap["COLUMN" + str(column)][value] = {}
@@ -48,11 +47,11 @@ class NaiveBayes:
                     self.attributesMap["COLUMN" + str(column)][value][output_Category] = 0
         #  Fill Stage
         for column in range(Number_Of_Columns):
-            categories = self.readColumn(self.input_Array, column)
+            categories = self._readColumn(self.TrainingData_Input_Arr, column)
             POINTER = 0
             for value in categories:
-                self.attributesMap["COLUMN" + str(column)][value][self.output_Array[POINTER]] += (
-                            1 / self.outputMap[self.output_Array[POINTER]]["Count"])
+                self.attributesMap["COLUMN" + str(column)][value][self.TrainingData_Output_Arr[POINTER]] += (
+                            1 / self.outputMap[self.TrainingData_Output_Arr[POINTER]]["Count"])
                 POINTER += 1
 
     def extractFromModel(self, vector):
@@ -69,11 +68,10 @@ class NaiveBayes:
                 except KeyError:
                     examine_result[category] *= 0
         result = sorted(examine_result, key=lambda x: examine_result[x])[-1]
-        self.logger.info("Extract from model {} and the result equal {}".format(vector, result))
+        print("Result {}".format(result))
         return result
-    
-
-Data = [["Sunny", "Hot", "High", "Weak", "No"],
+"""
+NB = NaiveBayes([["Sunny", "Hot", "High", "Weak", "No"],
           ["Sunny", "Hot", "High", "Strong", "No"],
           ["Overcast", "Hot", "High", "Weak", "Yes"],
           ["Rain", "Mild", "High", "Weak", "Yes"],
@@ -87,10 +85,21 @@ Data = [["Sunny", "Hot", "High", "Weak", "No"],
           ["Overcast", "Mild", "High", "Strong", "Yes"],
           ["Overcast", "Hot", "Normal", "Weak", "Yes"],
           ["Rain", "Mild", "High", "Strong", "No"]
-          ]
-NB = NaiveBayes(Data)
+          ])
 NB.train()
-print("Output:", NB.outputMap)
-print("Attribute MAP:", NB.attributesMap)
-res = NB.extractFromModel(["Overcast", "Cool", "Normal", "Strong"])
-print(res)
+NB.extractFromModel(["Sunny", "Cool", "High", "Strong"])
+
+
+"""
+
+
+
+
+
+
+
+
+
+
+
+

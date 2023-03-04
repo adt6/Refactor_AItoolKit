@@ -1,14 +1,11 @@
-from copy import copy, deepcopy
-from zope.interface import implementer
-from AI_Algorithm import AIAlgorithmInterface
-import json
+from __future__ import annotations
+from src.AI_Algorithm import AIAlgorithmInterface
 import math
 import numpy as np
 from src.Logger import MyLogger
 
 
-@implementer(AIAlgorithmInterface)
-class ID3Boost:
+class AdaBoost(AIAlgorithmInterface):
     class StumpTree:
         def __init__(self, featureIndex):
             self.featureIndex = featureIndex
@@ -17,26 +14,24 @@ class ID3Boost:
             self.alphaError = 0
             self.InfoGain = 0
 
-    def __init__(self, data):
-        self.logger = MyLogger().getLogger()
+    def __init__(self, trainingDataSet, allDataSet):
         self.stumpTrees = []  # to save all the trees
         self.map = {}
         # store all possible values for each column (input & output)
-        mat1 = np.array(data)
-        for i in range(len(data[0]) - 1):
+        mat1 = np.array(allDataSet)
+        for i in range(len(allDataSet[0]) - 1):
             self.map[i] = list(set(mat1[:, i]))
         self.outputDiscreate = list(set(mat1[:, -1]))
         # print("MAP: ",self.map)
         # Output: MAP: {0: ['Sunny', 'Rain', 'Overcast'], 1: ['Cool', 'Hot', 'Mild'], ...}
         # Create stump Tree for each feature
-        self.generateStumpTrees(data)
+        self.generateStumpTrees(trainingDataSet)
         # Intialize weights
-        self.weights = [1 / len(data) for i in range(len(data))]
-        self.triggerBoosting(data)
-        print("Trees:")
-        self.printStumpTrees()
+        self.weights = [1 / len(trainingDataSet) for i in range(len(trainingDataSet))]
+        self.trainingDataSet = trainingDataSet
+        # self.triggerBoosting(trainingDataSet)
 
-    def calculateEntropy(self, data):
+    def _calculateEntropy(self, data):
         # Assuming Data 2D Array
         # Assuming target value index is last column
         target_Values = [row[-1] for row in data]
@@ -50,7 +45,7 @@ class ID3Boost:
         # print(dictionary)
         return entropy
 
-    def splitData(self, data, column_index):
+    def _splitData(self, data, column_index):
         # Get the Target values for this column
         target_Values = [row[column_index] for row in data]
         # Create Dict to save the index
@@ -68,7 +63,7 @@ class ID3Boost:
         # print("\n\n++++++++++++++++++",dict)
         return dict
 
-    def mostFrequent(self, arr):
+    def _mostFrequent(self, arr):
         n = len(arr)
         maxcount = 0
         element_having_max_freq = 0
@@ -87,8 +82,8 @@ class ID3Boost:
         valueF = input[index]
         return tree.Outputs[tree.featureValues.index(valueF)]
 
-    def triggerBoosting(self, Examples):
-        for R in range(len(Examples[0]) - 1):
+    def train(self):
+        for R in range(len(self.trainingDataSet[0]) - 1):
             # Normalize weights
             sumOfWights = sum(self.weights)
             for i in range(len(self.weights)):
@@ -97,44 +92,36 @@ class ID3Boost:
             weakLearner = self.stumpTrees[R]
             # Compute Err
             Err = 0
-            for rowN in range(len(Examples)):
-                actualOutput = self.extractFromStumpTree(weakLearner, Examples[rowN])
-                if actualOutput != Examples[rowN][-1]:
+            for rowN in range(len(self.trainingDataSet)):
+                actualOutput = self.extractFromStumpTree(weakLearner, self.trainingDataSet[rowN])
+                if actualOutput != self.trainingDataSet[rowN][-1]:
                     Err += (self.weights[rowN] * 1.0)
             # compute Alpha error SAMME
             alphaErr = math.log10((1 - Err) / Err) + math.log10(len(self.outputDiscreate) - 1)
             weakLearner.alphaError = alphaErr
             # Update Weights
-            for rowN in range(len(Examples)):
-                actualOutput = self.extractFromStumpTree(weakLearner, Examples[rowN])
-                if actualOutput == Examples[rowN][-1]:
+            for rowN in range(len(self.trainingDataSet)):
+                actualOutput = self.extractFromStumpTree(weakLearner, self.trainingDataSet[rowN])
+                if actualOutput == self.trainingDataSet[rowN][-1]:
                     self.weights[rowN] *= math.pow(math.e, -1 * alphaErr)
                 else:
                     self.weights[rowN] *= math.pow(math.e, 1 * alphaErr)
 
-    def printStumpTrees(self):
-        for i in range(len(self.stumpTrees)):
-            print("\n")
-            print("Feature: ", self.stumpTrees[i].featureIndex)
-            print("Value: ", self.stumpTrees[i].featureValues)
-            print("Outputs: ", self.stumpTrees[i].Outputs)
-            print("Info Gain: ", self.stumpTrees[i].InfoGain)
-            print("Info alphaError: ", self.stumpTrees[i].alphaError)
 
     def generateStumpTrees(self, Examples):
-        Entropy = self.calculateEntropy(Examples)
+        Entropy = self._calculateEntropy(Examples)
         # For Each feature generate stump tree (Weak Classifier)
         for T in range(len(Examples[0]) - 1):
             # Create a root node for the tree
             root = self.StumpTree(str(T))
-            SplitData = self.splitData(Examples, T)
+            SplitData = self._splitData(Examples, T)
             # print("\n Index: ", T, "  Split Data: ", SplitData)
             InfoGain = Entropy
             for key in SplitData:
-                InfoGain -= ((len(SplitData[key]) / len(Examples)) * self.calculateEntropy(SplitData[key]))
+                InfoGain -= ((len(SplitData[key]) / len(Examples)) * self._calculateEntropy(SplitData[key]))
                 root.featureValues.append(key)
                 list = np.array([row[-1] for row in SplitData[key]])
-                root.Outputs.append(self.mostFrequent(list))
+                root.Outputs.append(self._mostFrequent(list))
             root.InfoGain = InfoGain
             self.stumpTrees.append(root)
             # Sort the trees depends on Info Gain
@@ -149,13 +136,12 @@ class ID3Boost:
                 if self.extractFromStumpTree(tree, vector) == val:
                     outputStructure[val] = outputStructure.get(val) + tree.alphaError
         # print(outputStructure)
-        result = sorted(outputStructure, key=lambda x: outputStructure[x])[-1]
-        self.logger.info("Extract from model {} and the result equal {}".format(vector, result))
-        return result
+        return sorted(outputStructure, key=lambda x: outputStructure[x])[-1]
 
 
 
 
+"""
 Ex = [["Sunny", "Hot", "High", "Weak", "No"],
       ["Sunny", "Hot", "High", "Strong", "No"],
       ["Overcast", "Hot", "High", "Weak", "Yes"],
@@ -171,7 +157,8 @@ Ex = [["Sunny", "Hot", "High", "Weak", "No"],
       ["Overcast", "Hot", "Normal", "Weak", "Yes"],
       ["Rain", "Mild", "High", "Strong", "No"]
       ]
-DT = ID3Boost(Ex)
-DT.printStumpTrees()
+DT = AdaBoost(Ex, Ex)
+DT.train()
 for row in Ex:
     print(row[-1], DT.extractFromModel(row))
+"""

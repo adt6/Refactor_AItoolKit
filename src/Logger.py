@@ -28,7 +28,7 @@ class MyLogger:
         self._logger.setLevel(logging.DEBUG)
         formatter = logging.Formatter('%(asctime)s \t [%(levelname)s | %(filename)s:%(lineno)s] > %(message)s')
         now = datetime.datetime.now()
-        dirname = "../log"
+        dirname = "./log"
         if not os.path.isdir(dirname):
             os.mkdir(dirname)
         fileHandler = logging.FileHandler(
