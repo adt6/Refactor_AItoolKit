@@ -8,6 +8,7 @@ from src.ProductsCreator import ID3BoostCreator
 from src.ProductsCreator import NaiveBayesCreator
 from src.Logger import MyLogger
 import sys
+import statistics
 
 
 from src.fileOperation import FileManager
@@ -34,7 +35,10 @@ if __name__ == "__main__":
     CrossValid = CrossValidation(4, 2, DataSet(Ex), "naivebayes")
     CrossValid.dataShufflingDT()
     result = CrossValid.triggerCrossValidation()
-    print(result)
+    average_Accuracy = sum(result) / len(result)
+    std_dev = statistics.stdev(result)
+    print("Standard Deviation: {}".format(std_dev))
+    print("Average Accuracy: {}".format(average_Accuracy))
 
     """
     logger = MyLogger().getLogger()
