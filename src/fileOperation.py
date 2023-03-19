@@ -1,13 +1,16 @@
+from abc import ABC, abstractmethod
 from random import random
-
+import pandas as pd
+import numpy as np
 from src.Logger import MyLogger
 from copy import deepcopy
-import numpy as np
 
-class FileManager:
-    def __init__(self, dataset_Name):
+
+class FileManager(ABC):
+    def __init__(self):
         self.logger = MyLogger().getLogger()
-        # working data set: car,mushroom,ecoli
+
+    def startProcessing(self, dataset_Name):
         data = None
         data = self.readData(dataset_Name)
         # Because the target in  mushroom Data set and Letter data set is in the 1st column
@@ -38,30 +41,14 @@ class FileManager:
                 array = self.readColumn(data, index)
                 Discreate_array = self.ConvertRowToDiscreate(array)
                 self.SaveColumn(data, Discreate_array, index)
-        self.DataSet =  data
-        # random.shuffle(data)
-        # accuracy = dataShufflingDT(data)
-        # print("Accuracy: ", sum(accuracy) / 50.0)
-        # print("Standard Deviation: ", statistics.stdev(accuracy))
+        self.DataSet = data
+
     def getDataSet(self):
         return self.DataSet
 
+    @abstractmethod
     def readData(self, fileName):
-        Dataset = open('./DataSet_DataBase/' + fileName, 'r')
-        data = Dataset.readlines()
-        Array = []
-        T = ","
-        # ecoli Data set separated by double empty space
-        if fileName == "ecoli":
-            T = "  "
-        for line in data:
-            # remove \n char from the end of the text ,
-            # then split the row depends on comma
-            record = line[:-1].split(T)
-            if '?' not in record: Array.append(record)
-        self.logger.info(
-            "Reading Data set:{} Feature Numbers:{} Number of rows:{}".format(fileName, len(Array[0]), len(Array)))
-        return Array
+        pass
 
     def moveTargetToLastColumn(self, data):
         modifyData = deepcopy(data)
@@ -118,3 +105,31 @@ class FileManager:
         for value in ColumnData:
             OriginArray[count][index] = value
             count += 1
+
+
+class ExcelDataSet(FileManager):
+    def readData(self, fileName):
+        # Read the Excel file
+        df = pd.read_excel('./DataSet_DataBase/' + fileName, sheet_name='Sheet1')
+        # Convert the data to a 2D numpy array
+        arr = df.values
+        print(arr.tolist())
+        return arr.tolist()
+
+
+class TextDataSet(FileManager):
+
+    def readData(self, fileName):
+        Dataset = open('./DataSet_DataBase/' + fileName, 'r')
+        data = Dataset.readlines()
+        Array = []
+        T = ","
+        for line in data:
+            # remove \n char from the end of the text ,
+            # then split the row depends on comma
+            record = line[:-1].split(T)
+            if '?' not in record: Array.append(record)
+        self.logger.info(
+            "Reading Data set:{} Feature Numbers:{} Number of rows:{}".format(fileName, len(Array[0]), len(Array)))
+        print(Array)
+        return Array

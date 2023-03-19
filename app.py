@@ -11,8 +11,7 @@ import sys
 import statistics
 
 
-from src.fileOperation import FileManager
-
+from src.fileOperation import FileManager, TextDataSet, ExcelDataSet
 
 if __name__ == "__main__":
     Ex = [["Sunny", "Hot", "High", "Weak", "No"],
@@ -30,9 +29,15 @@ if __name__ == "__main__":
           ["Overcast", "Hot", "Normal", "Weak", "Yes"],
           ["Rain", "Mild", "High", "Strong", "No"]
           ]
-    Data = FileManager("mushroom.data")
+
+    Data = TextDataSet()
+    Data.startProcessing("tennis.csv")
+
+    #Data = ExcelDataSet()
+    #Data.startProcessing("play_tennis.xlsx")
+
     dataSet = DataSet(Data.getDataSet())
-    CrossValid = CrossValidation(4, 2, DataSet(Ex), "naivebayes")
+    CrossValid = CrossValidation(4, 2, dataSet, "naivebayes")
     CrossValid.dataShufflingDT()
     result = CrossValid.triggerCrossValidation()
     average_Accuracy = sum(result) / len(result)
